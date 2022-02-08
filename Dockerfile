@@ -1,3 +1,18 @@
+FROM golang:1.15-alpine AS ssm-builder
+
+RUN apk update && \
+    apk add git gcc build-base bash
+RUN git clone https://github.com/aws/session-manager-plugin.git && \
+    cd session-manager-plugin && \ 
+    make build && \
+    cp bin/linux_amd64_plugin/session-manager-plugin /session-manager-plugin
+
+FROM python:alpine3.12 AS poetry-builder
+
+RUN apk update && \
+    apk add gcc build-base curl libffi-dev
+RUN curl -sSL https://install.python-poetry.org | python3 -
+
 FROM frolvlad/alpine-glibc:alpine-3.12
 
 LABEL maintainer="Wildlife Studios"
@@ -18,8 +33,8 @@ ARG TFENV_VERSION=1.1.1
 ARG KUBECTL_VERSION=v1.21.1
 ARG TERRAGRUNT=v0.29.7
 ARG OPA_VERSION=v0.29.4
-ARG PSQL_VERSION=12.8-r0
-ARG MYSQL_VERSION=10.4.21-r0
+ARG PSQL_VERSION=12.9-r0
+ARG MYSQL_VERSION=10.4.22-r0
 ARG ROVER_VERSION=0.2.2
 
 # Base dependencies
@@ -37,6 +52,8 @@ RUN apk update && \
       postgresql-client=${PSQL_VERSION} \
       mysql-client=${MYSQL_VERSION} 
 
+# Session-manager-plugin
+COPY --from=ssm-builder /session-manager-plugin /usr/local/bin
 
 # Vault
 RUN curl https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip --output - | \
@@ -86,6 +103,10 @@ ENV ENV="/root/.shrc"
 # Kubectl
 ADD https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl /bin/kubectl
 RUN chmod u+x /bin/kubectl
+
+# Poetry
+COPY --from=poetry-builder /root/.local/share/pypoetry /root/.local/share/pypoetry
+RUN ln -s /root/.local/share/pypoetry/venv/bin/poetry /usr/local/bin/poetry
 
 ENTRYPOINT [ "/bin/bash", "-c" ]
 CMD [ "bash" ]
