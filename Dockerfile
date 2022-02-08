@@ -7,7 +7,7 @@ RUN git clone https://github.com/aws/session-manager-plugin.git && \
     make build && \
     cp bin/linux_amd64_plugin/session-manager-plugin /session-manager-plugin
 
-FROM python:alpine3.12 AS poetry-builder
+FROM python:3.8.10-alpine3.12 AS poetry-builder
 
 RUN apk update && \
     apk add gcc build-base curl libffi-dev
