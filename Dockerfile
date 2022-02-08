@@ -7,12 +7,6 @@ RUN git clone https://github.com/aws/session-manager-plugin.git && \
     make build && \
     cp bin/linux_amd64_plugin/session-manager-plugin /session-manager-plugin
 
-FROM python:3.8.10-alpine3.12 AS poetry-builder
-
-RUN apk update && \
-    apk add gcc build-base curl libffi-dev
-RUN curl -sSL https://install.python-poetry.org | python3 -
-
 FROM frolvlad/alpine-glibc:alpine-3.12
 
 LABEL maintainer="Wildlife Studios"
@@ -42,15 +36,18 @@ RUN apk update && \
     apk add --no-cache \
       bash=${BASH_VERSION} \
       curl=${CURL_VERSION} \
-      grep=${GREP_VERSION} \
       git=${GIT_VERSION}   \
       python3=${PYTHON_VERSION} \
-      make=${MAKE_VERSION} \
       py3-pip=${PY3_PIP_VERSION}  \
-      jq=${JQ_VERSION} \
-      zip=${ZIP_VERSION} \
-      postgresql-client=${PSQL_VERSION} \
-      mysql-client=${MYSQL_VERSION} 
+      gcc \
+      build-base \
+      make \
+      curl \
+      libffi-dev
+
+# Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN ln -s /root/.local/share/pypoetry/venv/bin/poetry /usr/local/bin/poetry
 
 # Session-manager-plugin
 COPY --from=ssm-builder /session-manager-plugin /usr/local/bin
@@ -60,33 +57,7 @@ RUN curl https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VER
       busybox unzip -d /usr/bin/ - && \
       chmod +x /usr/bin/vault
 
-# OPA (Open Policy Agent)
-RUN curl -fsSL -o /usr/local/bin/opa https://github.com/open-policy-agent/opa/releases/download/${OPA_VERSION}/opa_linux_amd64 && \
-      chmod +x /usr/local/bin/opa && \
-      opa version
-
-# conftest
-RUN curl -L https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz --output - | \
-      tar -xzf - -C /usr/local/bin
-
-# rover
-RUN curl -LO https://github.com/im2nguyen/rover/releases/download/v${ROVER_VERSION}/rover_${ROVER_VERSION}_linux_amd64.zip && \
-        busybox unzip -d /tmp/ rover_${ROVER_VERSION}_linux_amd64.zip && \
-        mv /tmp/rover_v${ROVER_VERSION} /usr/bin/rover && \
-        chmod +x /usr/bin/rover && \
-        rm -r /tmp/*
-
-# tfenv (terraform)
-RUN git clone -b ${TFENV_VERSION} --single-branch --depth 1 \
-      https://github.com/topfreegames/tfenv.git /opt/tfenv && \
-      ln -s /opt/tfenv/bin/* /usr/local/bin
-
-# Terragrunt
-ADD https://github.com/gruntwork-io/terragrunt/releases/download/${TERRAGRUNT}/terragrunt_linux_amd64 /usr/local/bin/terragrunt
-RUN chmod +x /usr/local/bin/terragrunt
-
 # AWS CLI v1
-
 RUN pip3 install awscli
 
 # AWS CLI v2
@@ -103,10 +74,6 @@ ENV ENV="/root/.shrc"
 # Kubectl
 ADD https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl /bin/kubectl
 RUN chmod u+x /bin/kubectl
-
-# Poetry
-COPY --from=poetry-builder /root/.local/share/pypoetry /root/.local/share/pypoetry
-RUN ln -s /root/.local/share/pypoetry/venv/bin/poetry /usr/local/bin/poetry
 
 ENTRYPOINT [ "/bin/bash", "-c" ]
 CMD [ "bash" ]
