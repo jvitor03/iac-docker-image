@@ -7,33 +7,27 @@ RUN git clone https://github.com/aws/session-manager-plugin.git && \
     make build && \
     cp bin/linux_amd64_plugin/session-manager-plugin /session-manager-plugin
 
-FROM frolvlad/alpine-glibc:alpine-3.12
+FROM python:3.9.10-alpine
 
 LABEL maintainer="Wildlife Studios"
 
-ARG BASH_VERSION=5.0.17-r0
-ARG CURL_VERSION=7.79.1-r0
-ARG GIT_VERSION=2.26.3-r0
-ARG MAKE_VERSION=4.3-r0
-ARG PYTHON_VERSION=3.8.10-r0
-ARG PY3_PIP_VERSION=20.1.1-r0
 ARG VAULT_VERSION=1.7.2
 ARG KUBECTL_VERSION=v1.21.1
-ARG ROVER_VERSION=0.2.2
 
 # Base dependencies
 RUN apk update && \
     apk add --no-cache \
-      bash=${BASH_VERSION} \
-      curl=${CURL_VERSION} \
-      git=${GIT_VERSION}   \
-      python3=${PYTHON_VERSION} \
-      py3-pip=${PY3_PIP_VERSION}  \
-      make=${MAKE_VERSION} \
+      curl \
+      make \
       gcc \
       build-base \
       curl \
-      libffi-dev
+      libffi-dev \
+      musl-dev \
+      python3-dev \
+      openssl-dev \
+      cargo \
+      rust
 
 # Poetry
 RUN curl -sSL https://install.python-poetry.org | python3 -
